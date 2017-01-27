@@ -17,6 +17,7 @@ module RBCast
     def initialize
       @send_queue = []
       @controllers = []
+      @sync_enabled = true
     end
 
     def create_from_address(ip, port)
@@ -46,7 +47,14 @@ module RBCast
         add_controller(ctrl)
       end
     end
+    def empty_send_queue?
+      @send_queue.empty?
+    end
 
+    def shutdown
+      puts "shutting down #{@sync_enabled} #{@send_queue.size} #{Fiber.current} #{self.object_id}"
+      @sync_enabled = false
+    end
     def exec
       raise "Missing a required controller for [connection, heartbeat, receiver]" unless required_controllers_present?
       RBCast.debug "Starting controller loop..."
@@ -57,6 +65,7 @@ module RBCast
           _run_ctrl_callback(:on_tick)
           writer.resume unless @send_queue.empty?
           reader.resume
+          break if !@sync_enabled && @send_queue.empty?
         end
       end
 
